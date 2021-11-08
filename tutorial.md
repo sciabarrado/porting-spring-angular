@@ -1,6 +1,6 @@
 ---
 title: Using App Platform with Spring and Angular
-description: "Migrating an enterprises application built with  Spring Boot and Angular to the App Platform"
+description: "How to migrate step-by-step an enterprises application built with Spring Boot and Angular to the App Platform"
 publishDate: {{ now.Format "2006-01-02" }}
 lastmod: {{ now.Format "2006-01-02" }}
 slug: migrating-springboot-angular-app-to-app-platform
@@ -355,7 +355,6 @@ The reference files to review are:
 - The final [`app.yaml`](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/.do/app.yaml) able to build and deploy your application.
 - The complete [Dockerfile](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/backend/Dockerfile) of the backed to build a Java/Spring application.
 - The new [application-do.yaml](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/backend/src/main/resources/application-do.yml) showing what we needed to modify in Spring Application configuration to support accessing App Plaform databases.
-
 
 
 <!--Describes what the reader can do next. Can include a description of use cases or features the reader can explore, links to other DigitalOcean tutorials with additional setup or configuration, and external documentation.

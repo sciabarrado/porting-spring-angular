@@ -5,7 +5,7 @@ publishDate: {{ now.Format "2006-01-02" }}
 lastmod: {{ now.Format "2006-01-02" }}
 slug: migrating-springboot-angular-app-to-app-platform
 tutorial-articles:
-  - Category for the tutorial. Can add multiple entires. For example, kubernetes
+  - AppPlatform 
 ---
 ​
 <!--
@@ -25,11 +25,11 @@ Style guidelines for each section are described below for quick reference. See h
 ​
 # Using App Platform with Spring and Angular
 ​
-In this tutorial we want to show how to deploy an enterprise applications on the app plataform. Since we cannot cover every possible case, we focus on a  specific but very common case: an enterprise applications built with Angular for a front-end and Spring for the backend.
+In this tutorial we will teach how to deploy an enterprise applications on the App Platform. Since we cannot cover every possible case, we focus on a  specific but very common case: an applications built with Angular for a frontend and Spring for the backend.
 
-For this purpose we selected a well-known open source example application built with with Angular and Spring and ported to App Platform:  this [SpringBoot Angular Shopping Store](https://github.com/zhulinn/SpringBoot-Angular7-Online-Shopping-Store).  You will learn the changes required to deploy it on the App Platform.
+For this purpose we selected a well-known open source example application, built with with Angular and Spring, and ported to App Platform: this [SpringBoot Angular Shopping Store](https://github.com/zhulinn/SpringBoot-Angular7-Online-Shopping-Store). You will learn the changes required to deploy it on the App Platform. We expect those changes are very close to those required for any application built with the same technologies.
 
-You should then be able to easily adapt the steps followed to similar applications built in Javascript for the front-end and Java for the backend as the steps will be very similar. In many cases, the steps will be exactly the same.
+You should then be able to easily adapt the steps described to your applications built in Javascript for the frontend and Java for the backend. In many cases, the steps will be exactly the same.
 
 <!-- Describes what readers accomplish by following the tutorial. Write the title such that it includes the goal of the tutorial. Examples: 
 * Autoscale Cluster With Horizontal Pod Autoscaling
@@ -55,15 +55,16 @@ For local development you need:
 - [PostgreSQL](https://www.postgresql.org/download/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-Our target application has a frontend written Javscript with the [Angular Framework](https://angular.io), so you need **Node.js** to build it.  In our specific case we verified you need to install  node v14 for your platform. In general you need to install the version of node supported by your version of your javascript framework.
+Since target application has a frontend written Javscript with the [Angular Framework](https://angular.io), you need **Node.js** to build it. In our specific case we verified you need to install node v14 for your platform. In general you need to install the version of node supported by your version of your javascript framework.
 
- Note that installing `node` will also install the package management tool `npm` that we also need for the deployment.
+ Note that installing `node` will also install the node package manager `npm`, that we also need for the deployment.
 
-Our application has a backend written in Java with the [Spring Framework](https://spring.io/), and, as many other similar applications, it is built using [Maven](https://maven.apache.org/). You need to install Java version 11 for your platform, and, as a separate download, also Maven as it is not bundled  with Java.
+Our application has a backend written in Java with the [Spring Framework](https://spring.io/), and, as many other similar applications, it is built using [Maven](https://maven.apache.org/). You need to install Java version 11 for your platform. You also need to install Maven as a separate download, as it is not bundled with Java.
 
-The application stores its data in [PostgreSQL](https://www.postgresql.org/). During development you may wanto to run it locally you need a local postgresql, available for all the platforms.
+The application stores its data in SQL databases, and defaults to[PostgreSQL](https://www.postgresql.org/). During development you may wanto to run it locally you need a local postgresql. Also PostgreSQL is available for all the platforms.
 
-It is not stricly necessary but for testing and debugging purposes you may also need a local Docker. If you use Windows or Mac as your development machine you can use [Docker Desktop](https://www.docker.com/products/docker-desktop).
+It is not stricly necessary but for testing and debugging purposes you may also need a local Docker.
+If you use Windows or Mac as your development machine you can use [Docker Desktop](https://www.docker.com/products/docker-desktop).
 ​
 <!--Spells out, in a bulleted list, what the reader should have or do before they follow the current tutorial. Each bullet point must link to existing DigitalOcean documentation or a DigitalOcean tutorial that covers the necessary content if one exists.
 ​
@@ -72,22 +73,16 @@ Be specific with your prerequisites. For example, link to specific concepts or r
 ​
 ## Step 1: run the app locally
 
-Let's start first building the application locally.
-Fork the [original application](https://github.com/zhulinn/SpringBoot-Angular7-Online-Shopping-Store) in your repository.
+Let's start building the application locally, forking the [original application](https://github.com/zhulinn/SpringBoot-Angular7-Online-Shopping-Store) in your repository.
 
-I dit and then I cloned it locally as follows:
+Once we forked it, we cloned the source locally as follows:
 
 ```
 git clone https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store
 ```
 
-The application has a frontend and a backend like many other built as a Single Page Applicaton with an API server.
+The architectue of the application is a Single Page Applicaton connecting to a RESTful API server. Let's run it, first building and launching the backend, with the following commands:
 
-Let's first build and run the backend.
-
-The backend is a Java application developed with the [Spring Framework](https://spring.io/) framework that uses for storage a [PostgresSQL](https://www.postgresql.org/) database.
-
-You can build an launch the backend with the following commands:
 
 ```
 cd backend
@@ -95,13 +90,11 @@ mvn install
 mvn spring-boot:run
 ```
 
-By default the application is configured to connect to a postgresql databae configured in `backend/src/main/java/resources/application.yml`. If you check that file you will note that it tries by default to connect to a postgres database in localhost named `postgres` using the users `postgres` and the database `root`. 
+By default, the application is configured to connect to a local postgresql database configured in `backend/src/main/java/resources/application.yml`. If you check the configuration you will see  it uses a postgres database server in localhost using the default database and user.
 
-I tried on my Mac using the [`Posgres.app`](https://postgresapp.com/), a self-container application to run Postgresql and I was lucky as those are the defaults.
+I tried on my Mac using the [`Posgres.app`](https://postgresapp.com/), a self-container application to run Postgresql and I was lucky as it worked without any change to the database.
 
-So the backend started at the first attempt and created the database.
-
-You can check it connecting to the database showing the tables:
+We checked everything worked fine verifying the database tables are created properly, as follows: 
 
 ```
 $ psql -U postgres -W    
@@ -121,11 +114,15 @@ postgres=# \dt
  public | users            | table | postgres
 ```
 
-Now let's check and deploy the front-end. 
+You can also verify the API server is working properly with this with the command:
 
-This is an application built with in JavaScript the [Angular](https://angular.io/) framework.
+```
+curl http://localhost:8080/api/product
+``` 
 
-To install and start it you have to run:
+It should return a non-empty JSON with a catalog of products. 
+
+Now let's build the frontend.  To install and start it you have to run:
 
 ```
 cd frontend
@@ -133,15 +130,15 @@ npm install
 npm start
 ```
 
-If the prerequisites are satisfied properly you will be able to connect to your browser in post 4020 and [you will see this](1-snapshot.png).
+If you have installed the correct prerequisites you will be able to connect to your browser in post 4020 and [you will see this](1-snapshot.png).
 
-The application is connecting to the backed in port 8080 and it is performing REST requests. You can see this with the command `curl http://localhost:8080/api/product`. It will return a JSON with all the content.
+The application is connecting to the backed in port 8080 and it is performing REST requests. 
 
-Now we want to deploy this in App Platform. Let's do it.
+So far so good. The application is properly running locally, and we learned how to build it. Now we want to deploy this in App Platform, and we will need to do some changes to adapt to the production environment.
 
 ## Step 2: deploy the front-end as a static site
 
-App Platfrom supports almost out-of the box building the front-end as it is a typical javascript application.
+App Platfrom supports almost out of the box building the frontend, as it is a common javascript application.
 
 You need to create a `.do/app.yaml file` with a entry for a static site as follows:
 
@@ -156,36 +153,40 @@ static_sites:
   source_dir: frontend
 ```
 
-We have to specify where is our source code. So I specified I am using `github`, and then the repo and the branch where is our source. I pushed all the code with the changes in the branch `main`.
+First, we have to specify where is our source code. As it is stored on GitHub, we specified `github`, then the repo and the branch where is our source. 
 
-Here you can note that we are using the so-called  [monorepo structure](https://docs.digitalocean.com/products/app-platform/how-to/deploy-from-monorepo/), a single repository with multiple components in it. So I am specifying also the subdirectory where is the code of the front-end: `source_dir: frontend`.
+Note that we pushed the code with our changes in the branch `main` (the original branch of the example is `master`).
 
-Now we have to specify how to build the source code, and where is the result adding:
+Here you can note that we are using the so-called  [monorepo structure](https://docs.digitalocean.com/products/app-platform/how-to/deploy-from-monorepo/): a single repository with multiple components in it. 
+
+So we have to tell to App Platform the component is not on the root of the repository but in a subdirectory:  `source_dir: frontend`.
+
+Also we have to specify how to build the source code, and where is the result:
 
 ```
   build_command: ./node_modules/.bin/ng build --prod
   output_dir: dist/shop
 ```
 
-Note that App Platform build packs will automatically detect it is a node.js application because it will find the `package.json` and will automatically perform an `npm install` that will install all the tools required to build, most notably the CLI `ng` that is the one used by Angular to perform its tasks.
+Note that App Platform buildpack will automatically detect it is a node.js application because it will find the `package.json` and will automatically perform an `npm install`. This will installs all the tools required to build the frontend; most notably it installs the CLI `ng` that is the tool required to build any angular application.
 
-However `ng` is normally installed locally as a global tool. In the build environment it will be avaiable only locally to the front-end build you you will have to use `./node-modules/.bin/ng build --prod` to build. The `.bin` path under the `node_modules` is where `node` install the tools when they are not installed globally. 
+However `ng` is normally installed locally as a global tool. In the build environment it will be avaiable only under `node_modules`.  So you will have to use `./node-modules/.bin/ng build --prod` to build. 
 
-Also note that we are specifying the `--prod` flag to build the source in "production" mode. This will use a different path for the API suitable to reach the api on the production server.
+The `.bin` path under the `node_modules` is where `node` install the tools when they are not installed globally.  Also note we need to add the  the `--prod` flag to build the source in "production" mode. This will use a different path for the API suitable to reach the api on the production server. 
 
-Finally the build process will generate the final javascript under the folder `dist/shop` so we have to say to collect and publish the front-end from that directory.
+Finally the build process will generate the final javascript under the folder `dist/shop`; so we have to say to collect and publish the frontend from that directory.
 
 ## Step 3: create an appropriate Spring Profile
 
-Spring applications are configured using a configuration file. Our application configuration files are located in   `backend/src/main/java/resources`. The name of the file to use depends on some parameters passed when the application is started. 
+Spring applications are configured using a configuration file, located in our case under   `backend/src/main/java/resources`. 
 
-If no parametes are passed the name of the configuration file is `application.yml`. If you specifify, for example `--spring.profiles.active=docker` the name of the application file will be `application-docker.yml`. So in short the profile name corresponds to a suffix in the name of the configuration file to use.
+The name of the configuration file  depends on some parameters passed when the application is started.  If no parametes are passed the name of the configuration file is `application.yml`. If you specifify, for example `--spring.profiles.active=docker` the name of the configuration file will be `application-docker.yml`.  The profile name corresponds to a suffix in the name of the configuration file to use.
 
-So we add the configuration file `src/main/java/resources/application-do.yml` copying the `application.yml` and then modifying it. We will then be able to use it adding at the launch the parameter `--spring.profiles.active=do`.
+So we are going to add a new configuration file `src/main/java/resources/application-do.yml` copying the `application.yml` and then modifying it. We will then be able to use it adding at the launch the parameter `--spring.profiles.active=do`.
 
-In order to run the application on App Platform we have to configure at least two things: the database and the base path where the application will be run.
+In order to run the application on App Platform we have to configure at least two different components: the database and the route to reach backend service.
 
-Let's start with the database. In onder to connect to the database we have to specify username, password and the database url where the database is located.
+Let's start with the database. You connect to the database specifying username, password and the database url where the database is located.
 
 This means we will replace the following entries in our configuration file:
 
@@ -196,19 +197,19 @@ This means we will replace the following entries in our configuration file:
     url: ${JDBC_DATABASE_URL}
 ```
 
-The syntax `${VARIABLE}` means that the value will be replaced but the environment variable `VARIABLE`. We will provide the actual values for `USERNAME`, `PASSWORD` and `JDBC_DATABASE_URL` using the `app.yaml` when we deploy it (see step 5).
+In general the syntax `${VARIABLE}` means that the value will be provided by the environment variable `VARIABLE`. We will pass  the actual values for `USERNAME`, `PASSWORD` and `JDBC_DATABASE_URL` using the `app.yaml` when we deploy it (see step 5).
 
-Now, let's examine the base path of our backend.
+Now, let's examine the route to reach our backend. App Platform provides a `<deployment-host>` hostname to access all the components of our application via https. The various compoments are then accessible using different subpaths connecting to that hostname. 
 
-The frontend will be server at the top level, so invoking `https://<deployment-host>` we will load the angular application and it will start invoking the backend. Now, the frontend is configured to look for t the backend in the same host of the frontend using the prefix `/api`.
+The frontend will served at the root level, so invoking `https://<deployment-host>/` we will open the angular application. Once it is loaded in the browser, d it will start invoking requests on the backend. Now, the frontend is configured to look for the backend in the same host using the prefix `/api`. Hence the backed must be accessible as `https://<deployment-host>/api/`.
 
-When App Platform deploys the backend, you will have to specify under with path it will be served. Since we cannot use the root level (as it is used by the frontend) we are going to use a prefix, that will be `/api`.
+When App Platform deploys the the services, you will have to specify for each one under which path it will be served. 
 
-However by default the backend is configured to serve every request using the prefix (or, in Java terminology, the context path) `/api`.
+Note however that by default the backend is configured to serve every request using the prefix (or, in Java terminology, the context path) `/api`.
 
-This is useful for local development but this will lead in production to require to invoke api calls with the prefix `/api/api` that is not very elegant...
+This is useful for local development but this will lead in production to require to invoke api calls with the prefix `/api/api` that is not very elegant, and will not work unless we change the frontend configuration.
 
-Luckily we can use the configuration file to use an empty context path with the following configuration that we add to our configuation file:
+Luckily, we can use the configuration file to use an empty context path. We need to use  following configuration in our configuration file:
 
 ```
 server:
@@ -216,26 +217,29 @@ server:
     contextPath: /
 ```
 
-In this way, the backend will serve requests on the root level while App Platforl will add the `/api` prefix, allowing the front-end to invoke the api in the same way it invoked them when doing local development.
+In this way, the backend service will serve requests on its root level, while App Platform will add the `/api` prefix, allowing the frontend to invoke the api in the same way it invoked them when doing local development. And everything will work in production.
 
 ## Step 4: build the docker image
 
-Front-end was relatively easy to build, because App Platform build packs supports directly Javascript application. However, App Platform currently supports Java application only using user-provided custom Dockerfiles. Hence we had to write one, changing the existing one.
+Front-end was relatively easy to build, because App Platform buildpack supports directly Javascript application. However, App Platform currently supports Java application only using user-provided custom Dockerfiles. Hence we had to write one.
 
-Unfortnately, the provided Dockerfile assumes you have already built the [jar file](https://docs.oracle.com/javase/tutorial/deployment/jar/basicsindex.html) of your application, that is the executable format of a java application. So you have two options: one is to build and save your jar in your git repository, and another is that you build you jar with Docker.
 
-Since adding binary files in source repositories is not a recommended practice, we go for the longer route of building our app jar using a [Docker multistage build](https://docs.docker.com/develop/develop-images/multistage-build/).
+Unfortnately, the provided Dockerfile assumes you have already built the [jar file](https://docs.oracle.com/javase/tutorial/deployment/jar/basicsindex.html) of your application, that is the executable format of a java application. 
 
-Before we go on discussing the Dockerfile, we note that the source repository includes the `mvnw` script that helps bootstrapping Maven that in turns builds our application. However, for some reasons, it was missing a couple of required files used by this tool, so we had to add manually the following files:
+So we have two options: one is to build and save our jar in the repository, and another is that you build the jar with Docker.
+
+Since adding binary files in source repositories is definitely not a recommended practice, we go for the longer route of building our app jar using a [Docker multistage build](https://docs.docker.com/develop/develop-images/multistage-build/).
+
+*NOTE* Before we go on discussing the Dockerfile, we note that the source repository includes the `mvnw` script that  bootstraps Maven to build our application. However, for some reasons, a couple of  required files are missing, so we had to add manually the following files:
 
 - [backend/.mvn/wrapper/MavenWrapperDownload.java](https://raw.githubusercontent.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/main/backend/.mvn/wrapper/MavenWrapperDownloader.java)
 - [backend/.mvn/wrapper/maven-wrappers.properties](https://raw.githubusercontent.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/main/backend/.mvn/wrapper/maven-wrappers.properties)
 
-So you may want to add them manually to the repository to support the multistage build that we are going to explore.
+If you are going to repeat the steps of this tutorila, you may want to add them manually.
 
-In the following sections we describe the `Dockerfile` that will replace the existing `backend/Dockerfile` in our original application, using a multistage build.
+Now, let's describe our the `backend/Dockerfile` for App Platform. It will replace the existing `backend/Dockerfile` in our original application, using a multistage build.
 
-A multistage build in Docker is a Dockerfile that creates multiple containers. Typically some containers are created as a build-only environment, then the artififacts are extracted by other containers that collects the results and prepare the final image to be run.
+A multistage build in Docker is a Dockerfile that creates multiple containers. Typically some containers are created as a build-only environment, then the produced artifacts are copied in other containers to build the final image to be run.
 
 This is the code of the first part of the `backend/Dockerfile`: 
 
@@ -249,9 +253,9 @@ WORKDIR /root
 RUN bash mvnw package -DskipTests 
 ```
 
-Note we are using as a builder image `openjsk:11-oracle` that includes the Java development kit. Then we copy inside the source of our application, the maven build files (`mvnw` and `pom.xml`) and also the support files required under `.mvn`.
+Note we are using as a builder image `openjdk:11-oracle` that includes the Java development kit. Then we copy inside the source of our application, the maven build files (`mvnw` and `pom.xml`) and also the support files required under `.mvn`.
 
-Once those files are in place, building it is just a matter of launching `mvnw` with `bash`. We have to specify that we want to `package` our application and we also need to skip tests as the build environment is lacking the necessary support to actually run them.
+Once those files are in place, building it is just a matter of launching `mvnw` with `bash`. We have to specify that we want to `package` our application and we also need to skip tests, as the build environment is lacking the necessary database support to actually run them.
 
 Let's see now the second part of our `Dockerfile`:
 
@@ -263,11 +267,13 @@ COPY --from=builder /root/target/*.jar app.jar
 ENTRYPOINT ["java", "-jar","/app.jar", "--spring.profiles.active=do"]
 ```
 
-Here is is just a matter of copying the jar file built in the previous step as `/app.jar` and launh it, specifying which profile we want to use (in our case the `.do` profile)
+Here is is just a matter of copying the jar file built in the previous step as `/app.jar` and lauching it, specifying which profile we want to use (in our case the `.do` profile). Remember we wrote in the previous step a `application-do.yml` configuration to support the App Platform environment.
 
 ## Step 5: deploy the backend
 
-We have now a properly built docker image that connects to the database and can be server under the path that the front-end expects. We have to complete the work adding the configuration for the backend service and the database.
+We have now a properly built docker image that connects to the database and can be served under the path that the frontend expects. 
+
+We have to complete the work adding to the `app.yaml` the configuration for the backend service and the database.
 
 Let's add first a database with the following configuration:
 
@@ -278,9 +284,9 @@ databases:
   version: "12"
 ```
 
-this will deploy a development database postgres when the application will be created. Note that a development database is not recommended for production use. In such a case you may want to provision a full featured DBaaS.
+This will deploy a Postgres development database  when the application will be deployed in App Platfor. Note that a development database is not recommended for production use. In such a case you may want to provision a full featured database using one of the offerings of the Digital Ocean's DBaaS.
 
-Now it is time to see the backend service. First let's  say how to build and deploy it:
+Now it is time to see deploy backend service. First let's  add the configuration to build and deploy it:
 
 ```
 - name: backend
@@ -295,11 +301,17 @@ Now it is time to see the backend service. First let's  say how to build and dep
     - path: /api
 ```
 
-Similarly to the front-end, we are using the sape repo for the backend, but using the monorepo path we specify now the `sorce_dir: backend`. Furthermore we instruct App Platform to build with a dockerfile with `dockerfile_path: backend/Dockerfile`. When using a dockerfile, at the end of the build process the built image will be automatically launched and will start serving, We specified the `http_port: 8080` where the docker container is listening for requests.
+Similarly to the frontend, we are using the same repo for the backend; but because we are using the monorepo pattern, we have to specify now we wat to build the backend component, with  `source_dir: backend`. 
+
+Furthermore we instruct App Platform to build with a dockerfile (and not with a build pack) with `dockerfile_path: backend/Dockerfile`. 
+
+When using a dockerfile, at the end of the build process the built image will be automatically launched and will start serving. We say that the port to use is the `http_port: 8080`.
 
 As we discussed before, the container itself will be available under the path `/api` that we specify in the `route`.
 
-Now we only miss one thing: passing the invormations to connect to the database. We do that using environment variables. Luckily, App Platform allows every component it deploys to expose some informations that other component can grab. Hence this is the configuration of our service to access to the database:
+Now we only miss one thing: passing the informations required to let the backend to connect to the database. We do that using environment variables. 
+
+Luckily, App Platform allows every component it deploys to expose some informations that other component can read. Hence we add to the configuration of our service the following environment variables to access to the database:
 
 ```
  envs:
@@ -324,16 +336,24 @@ After the title, add an introductory sentence that describes what the reader wil
 ​
 End each step with a transition sentence that describes what the reader accomplished and where they are going next.
 -->
+
+We are ready. It you now run 
+
+```
+doctl app create --spec .do/app.yaml
+```
 ​
+after a while you shold see the application up and running exposing the same user interface you have see at the beginning, when testing the application locally.
+
 ## Summary
 
 Let's recap what we learned so far:
 
-- How to build an Angular application leveraging the build tool
-- How to configure a Spring Application to connect to a database using environment variables
-- How to use multistage docker build to build Java applications using Docker itself
-- How to deploy in app platform static sites, databases and services
-- How to provide to services informations to connect to databases at runntime
+- how to build an Angular application leveraging the build `ng` tool
+- how to configure a Spring Application to connect to a database using environment variables
+- how to use multistage docker build to build Java applications using Docker itself
+- how to deploy in app platform static sites, databases and services
+- how to provide to services informations to connect to databases at runtime
 ​
 <!--Lists what the reader accomplished in a brief workflow format that readers can reference later as a reminder of steps for the task. Include two sections:
 ​
@@ -356,6 +376,7 @@ The reference files to review are:
 - The complete [Dockerfile](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/backend/Dockerfile) of the backed to build a Java/Spring application.
 - The new [application-do.yaml](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/backend/src/main/resources/application-do.yml) showing what we needed to modify in Spring Application configuration to support accessing App Plaform databases.
 
+You are now ready to deploy your Spring/Angular enterprise application to App Platform.
 
 <!--Describes what the reader can do next. Can include a description of use cases or features the reader can explore, links to other DigitalOcean tutorials with additional setup or configuration, and external documentation.
 -->

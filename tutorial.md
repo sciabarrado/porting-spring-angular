@@ -177,6 +177,47 @@ Finally the build process will generate the final javascript under the folder `d
 
 ## Step 3: create an appropriate Spring Profile
 
+Spring applications are configured using a configuration file. Our application configuration files are located in   `backend/src/main/java/resources`. The name of the file to use depends on some parameters passed when the application is started. 
+
+If no parametes are passed the name of the configuration file is `application.yml`. If you specifify, for example `--spring.profiles.active=docker` the name of the application file will be `application-docker.yml`. So in short the profile name corresponds to a suffix in the name of the configuration file to use.
+
+So we add the configuration file `src/main/java/resources/application-do.yml` copying the `application.yml` and then modifying it. We will then be able to use it adding at the launch the parameter `--spring.profiles.active=do`.
+
+In order to run the application on App Platform we have to configure at least two things: the database and the base path where the application will be run.
+
+Let's start with the database. In onder to connect to the database we have to specify username, password and the database url where the database is located.
+
+This means we will replace the following entries in our configuration file:
+
+```
+ datasource:
+    username: ${USERNAME}
+    password: ${PASSWORD}
+    url: ${JDBC_DATABASE_URL}
+```
+
+The syntax `${VARIABLE}` means that the value will be replaced but the environment variable `VARIABLE`. We will provide the actual values for `USERNAME`, `PASSWORD` and `JDBC_DATABASE_URL` using the `app.yaml` when we deploy it (see step 5).
+
+Now, let's examine the base path of our backend.
+
+The frontend will be server at the top level, so invoking `https://<deployment-host>` we will load the angular application and it will start invoking the backend. Now, the frontend is configured to look for t the backend in the same host of the frontend using the prefix `/api`.
+
+When App Platform deploys the backend, you will have to specify under with path it will be served. Since we cannot use the root level (as it is used by the frontend) we are going to use a prefix, that will be `/api`.
+
+However by default the backend is configured to serve every request using the prefix (or, in Java terminology, the context path) `/api`.
+
+This is useful for local development but this will lead in production to require to invoke api calls with the prefix `/api/api` that is not very elegant...
+
+Luckily we can use the configuration file to use an empty context path with the following configuration that we add to our configuation file:
+
+```
+server:
+  servlet:
+    contextPath: /
+```
+
+In this way, the backend will serve requests on the root level while App Platforl will add the `/api` prefix, allowing the front-end to invoke the api in the same way it invoked them when doing local development.
+
 ## Step 4: build the docker image
 
 Front-end was relatively easy to build, because App Platform build packs supports directly Javascript application. However, App Platform currently supports Java application only using user-provided custom Dockerfiles. Hence we had to write one, changing the existing one.
@@ -226,8 +267,54 @@ Here is is just a matter of copying the jar file built in the previous step as `
 
 ## Step 5: deploy the backend
 
-We have now a properly build docker image that connects to the database.  
+We have now a properly built docker image that connects to the database and can be server under the path that the front-end expects. We have to complete the work adding the configuration for the backend service and the database.
 
+Let's add first a database with the following configuration:
+
+```
+databases:
+- name: db
+  engine: PG
+  version: "12"
+```
+
+this will deploy a development database postgres when the application will be created. Note that a development database is not recommended for production use. In such a case you may want to provision a full featured DBaaS.
+
+Now it is time to see the backend service. First let's  say how to build and deploy it:
+
+```
+- name: backend
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: sciabarrado/SpringBoot-Angular7-Online-Shopping-Store
+  source_dir: backend
+  dockerfile_path: backend/Dockerfile
+  http_port: 8080
+  routes:
+    - path: /api
+```
+
+Similarly to the front-end, we are using the sape repo for the backend, but using the monorepo path we specify now the `sorce_dir: backend`. Furthermore we instruct App Platform to build with a dockerfile with `dockerfile_path: backend/Dockerfile`. When using a dockerfile, at the end of the build process the built image will be automatically launched and will start serving, We specified the `http_port: 8080` where the docker container is listening for requests.
+
+As we discussed before, the container itself will be available under the path `/api` that we specify in the `route`.
+
+Now we only miss one thing: passing the invormations to connect to the database. We do that using environment variables. Luckily, App Platform allows every component it deploys to expose some informations that other component can grab. Hence this is the configuration of our service to access to the database:
+
+```
+ envs:
+  - key: JDBC_DATABASE_URL
+      scope: RUN_TIME
+      value: ${db.JDBC_DATABASE_URL}
+    - key: USERNAME
+      scope: RUN_TIME
+      value: ${db.USERNAME}
+    - key: PASSWORD
+      scope: RUN_TIME
+      value: ${db.PASSWORD}
+```
+
+Note how we are basically propagating to our service as environment variables the values exposed by the database itself. So the `USERNAME` and the `PASSWORD` are the username and password assigned to the database: `db.USERNAME` and `db.PASSWORD`. And, luckily, the database support already provides database urls in the form that the database server expects, so the last one will assign the `JDBC_DATABASE_URL` to `${db.JDBC_DATABASE_URL}`.
 
 <!--Describes what the reader needs to do. Contains commands, code listings, and files, and provides explanations that explain the what and also why the reader is doing it this way.
 ​
@@ -258,7 +345,18 @@ Instead of using phrases like “we learned how to”, use phrases like “you c
 ​
 ## What’s Next?
 
+The entire source code of the modified application is [here](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store).
 
-​
+
+You may want to review the key files and use as a basis for our implementations.
+
+The reference files to review are:
+
+- The final [`app.yaml`](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/.do/app.yaml) able to build and deploy your application.
+- The complete [Dockerfile](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/backend/Dockerfile) of the backed to build a Java/Spring application.
+- The new [application-do.yaml](https://github.com/sciabarrado/SpringBoot-Angular7-Online-Shopping-Store/blob/main/backend/src/main/resources/application-do.yml) showing what we needed to modify in Spring Application configuration to support accessing App Plaform databases.
+
+
+
 <!--Describes what the reader can do next. Can include a description of use cases or features the reader can explore, links to other DigitalOcean tutorials with additional setup or configuration, and external documentation.
 -->
